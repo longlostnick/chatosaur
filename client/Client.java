@@ -10,8 +10,12 @@ public class Client {
     private static DataOutputStream out;
 
     public static void main(String[] args) {
-        String host = "localhost";
-        int port = 7777;
+        
+        System.out.print("\nServer host: ");
+        String host = getUserInput();
+
+        System.out.print("Server port: ");
+        int port = Integer.parseInt(getUserInput());
 
         if (args.length > 0) {
             host = args[0];
@@ -28,7 +32,13 @@ public class Client {
             in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             out = new DataOutputStream(socket.getOutputStream());
 
+            // let the server know we're a client
+            out.writeBytes("client\n");
+
             MessageBuffer mbuff = new MessageBuffer(in);
+
+            // just a blank line for formatting
+            System.out.println("");
 
             while(true) {
 
@@ -41,5 +51,18 @@ public class Client {
         } catch(IOException e) {
             e.printStackTrace();
         }
+    }
+
+    // nice compact method to take user input
+    private static String getUserInput() {
+        String input = "";
+
+        try {
+            BufferedReader UserInput = new BufferedReader(new InputStreamReader(System.in));
+            input = UserInput.readLine();
+        } catch(IOException e) {
+            e.printStackTrace();
+        }
+        return input;
     }
 }

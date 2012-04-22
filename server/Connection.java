@@ -2,25 +2,20 @@ package chatosaur.server;
 
 import java.net.*;
 import java.io.*;
-import java.util.concurrent.Semaphore;
 
 public class Connection implements Runnable {
 
     private Server server;
     private Socket socket;
-    private Semaphore semaphore;
     private BufferedReader in;
     private DataOutputStream out;
     public String clientName;
     private Thread thread;
-    private Log log;
 
-    public Connection(Server server, Socket socket, Semaphore semaphore, Log log) {
+    public Connection(Server server, Socket socket) {
         this.server = server;
         this.socket = socket;
-        this.semaphore = semaphore;
         this.clientName = socket.getInetAddress().getHostName() + ":" + socket.getPort();
-        this.log = log;
 
         try {
             this.in = new BufferedReader(new InputStreamReader(socket.getInputStream())); 
@@ -36,8 +31,9 @@ public class Connection implements Runnable {
 
     public void run() {
         String welcome = "<" + clientName + "> joined the room.";
-        System.out.println(welcome);
+        server.log.write(welcome);
         server.sendToAll(this, welcome);
+
         try {
             while(true) {
 
@@ -49,7 +45,7 @@ public class Connection implements Runnable {
                     break;
                 }
 
-                System.out.println("Message received from <" + clientName + ">: " + message);
+                server.log.write("Message received from <" + clientName + ">: " + message);
 
                 server.sendToAll(this, "<" + clientName + ">: " + message);
 

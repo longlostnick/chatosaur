@@ -2,7 +2,6 @@ package chatosaur.server;
 
 import java.net.*;
 import java.io.*;
-import java.util.concurrent.Semaphore;
 
 // manages and shows the user the server administration
 public class ServerInterface {
@@ -14,23 +13,46 @@ public class ServerInterface {
         this.server = server;
     }
 
+    // show user the options
+    private void showMenu() {
+
+        String firstOption = "1. start server";
+
+        if (server.running) {
+            firstOption = "1. server status";
+        }
+
+        System.out.println("\n" + firstOption + "\n" +
+                           "2. add new server to system\n" +
+                           "3. show this menu\n" +
+                           "0. Exit/Shutdown");
+    }
+
     public void start() {
 
-        System.out.println("\nWelcome to Chatosaur Server v0.0001\n");
+        System.out.println("\nWelcome to Chatosaur Server v0.0001");
+
+        // show the user/administrator the menu
+        showMenu();
 
         while (true) {
 
-            // show the user/administrator the menu
-            showMenu();
-
             System.out.print("\nChoose an option: ");
 
-            switch(getUserInput()) {
+            switch(Integer.parseInt(getUserInput())) {
                 case 1:
-                    promptStartServer();
+                    if (!server.running) {
+                        promptStartServer();
+                    } else {
+                        System.out.println("\nThe server is running!");
+                    }
                     break;
                 case 2:
-                    promptAddServer();
+                    if (server.running) {
+                        promptAddServer();
+                    } else {
+                        System.out.println("\nThe server must be running to do that!");
+                    }
                     break;
                 case 3:
                     showMenu();
@@ -39,44 +61,34 @@ public class ServerInterface {
                     promptShutdownServer();
                     break;
                 default:
-                    System.out.println("command not recognized.");
+                    System.out.println("\ncommand not recognized.");
             }
         }
     }
 
-    // show user the options
-    private void showMenu() {
-        System.out.println("\n1. start server\n" +
-                           "2. add new server to system\n" +
-                           "3. show this menu\n" +
-                           "0. Exit/Shutdown");
-    }
-
     // let's the user name the server and starts it
     private void promptStartServer() {
-        System.out.print("\nGive the server a name: ");
 
-        server.setName(getUserInput());
-        server.start();
+        System.out.print("\nSet the server port: ");
+        server.setPort(Integer.parseInt(getUserInput()));
+
+        if (server.start()) {
+            System.out.println("\nServer started.");
+        }
     }
 
     // prompt the user for a server and port to add to list
     private void promptAddServer() {
 
-        System.out.print("\nServer name: ");
-        String name = getUserInput();
-
         System.out.print("\nServer host: ");
         String host = getUserInput();
 
-        System.out.print("\nServer port: ");
+        System.out.print("Server port: ");
         int port = Integer.parseInt(getUserInput());
 
         // test the connection
         if (testConnection(host, port)) {
-            if (server.addServer(name, host, port)) {
-                System.out.println("Server added to system.");
-            }
+            server.addServer(host, port);
         } else {
             System.out.println("Could not contact server.");
         }
@@ -85,7 +97,7 @@ public class ServerInterface {
     private void promptShutdownServer() {
         System.out.print("\nAre you sure? (y/n): ");
 
-        if (getUserInput() == "y") {
+        if (getUserInput().equals("y")) {
             server.gracefulShutdown();
             System.exit(0);
         }
@@ -97,8 +109,10 @@ public class ServerInterface {
         boolean reachable = false;
 
         try {
-            Socket = new Socket(host, port);
+            socket = new Socket(host, port);
             reachable = true;
+        } catch (IOException e) {
+            e.printStackTrace();
         } finally {
             if (socket != null) {
                 try {

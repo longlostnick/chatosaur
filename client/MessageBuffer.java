@@ -1,4 +1,4 @@
-package nick.client;
+package chatosaur.client;
 
 import java.net.*;
 import java.io.*;

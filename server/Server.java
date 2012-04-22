@@ -2,68 +2,54 @@ package chatosaur.server;
 
 import java.net.*;
 import java.io.*;
-import java.util.concurrent.Semaphore;
 import java.util.ArrayList;
+import java.io.Serializable;
 
 // import my project's classes
 import chatosaur.server.ServerInterface;
+import chatosaur.server.OutgoingServerList;
+import chatosaur.server.IncomingServerList;
 import chatosaur.server.Connection;
 import chatosaur.server.Log;
 
 public class Server {
 
     private String id;
-    private String name;
-    private String host;
-    private int port;
-    private ServerSocket server;
+    private ArrayList<ConnectedServer> serverList;
     private ArrayList<Connection> connections;
-    private ArrayList<Server> serverList;
-    private Log log;
 
-    public Server(String host, int port) {
+    public boolean running = false;
+    public Log log;
+    public String host;
+    public int port = -1;
+
+    public Server(String host) {
         this.host = host;
-        this.port = port;
-        this.log = new Log("server.log");
     }
 
-    public void start() {
+    public boolean start() {
 
-        // we only want one client inserting/removing at a time
-        // we don't care about reads
-        Semaphore semaphore = new Semaphore(1);
+        if (port > -1) {
+            // set up our log based on the port that should have been set
+            log = new Log("server_" + Integer.toString(port) + ".log");
 
-        // establish ArrayList to hold connections
-        connections = new ArrayList<Connection>();
+            // establish ArrayList to hold connections
+            connections = new ArrayList<Connection>();
 
-        // establish ArrayList to hold servers
-        serverList = new ArrayList<Server>();
+            // establish ArrayList to hold servers
+            serverList = new ArrayList<ConnectedServer>();
 
-        // bind server to port
-        try {
-            server = new ServerSocket(port);
-        } catch (IOException e) {
-            e.printStackTrace();
+            // add ourseleves to the list
+            serverList.add(new ConnectedServer(host, port));
+
+            new Thread(new ConnectionBroker(this)).start();
+
+            log.write("Server started on port " + Integer.toString(port) + ".");
+
+            running = true;
         }
 
-        // continuously check for new connections
-        while (true) {
-            try {
-                Socket socket = server.accept();
-
-                // we're handling incoming servers and clients on the same port
-                // so we determine which is which based on the initial message sent
-                // server connects with "server", client connects with "client"
-                if (readMessage(socket) == "server") {
-                    new IncomingServerList(this, socket);
-                } else {
-                    connections.add(new Connection(this, socket, semaphore, log));
-                }
-
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
+        return running;
     }
 
     public void killSocket(Connection conn) {
@@ -88,41 +74,42 @@ public class Server {
         }
     }
 
-    public void setName(String name) {
-        this.name = name;
+    public ArrayList<Connection> getConnections() {
+        return connections;
     }
 
-    public void addServer(String name, String host, int port) {
-        Server newServer = new Server(host, port);
-        newServer.setName(name);
+    public void setPort(int port) {
+        this.port = port;
+    }
+
+    public void addServer(String host, int port) {
+        ConnectedServer newServer = new ConnectedServer(host, port);
 
         serverList.add(newServer);
+
+        // send out an updated list to all the servers
+        propagateList();
     }
 
-    // this is the possible laggy part of the program so we'll do this in threads
-    public void propagateList() {
-        for (int i=0; i<serverList.size(); i++) {
-            Server s = serverList.get(i);
-
-            // make sure this isn't the current server
-            if (server.host != s.host && server.port != s.port) {
-                Socket serverSocket = new Socket(server.host, server.port);
-                OutgoingServerList session = new OutgoingServerList(this, serverList, log);
-            }
-        }
-    }
-
-    public void setServerList(ArrayList<Server> newList) {
+    public void setServerList(ArrayList<ConnectedServer> newList) {
         serverList = newList;
+
+        String list = serverList.get(0).getClientName();
+
+        for (int i=1; i<serverList.size(); i++) {
+            ConnectedServer s = serverList.get(i);
+            list = list + ", " + s.getClientName();
+        }
+
+        log.write("Updated List: " + list);
     }
 
-    // private
-
-    private String readMessage(Socket incoming) {
+    public String readMessage(Socket incoming) {
         String message = null;
+
         try {
-            this.in = new BufferedReader(new InputStreamReader(incoming.getInputStream())); 
-            message = in.readLine();
+            BufferedReader sin = new BufferedReader(new InputStreamReader(incoming.getInputStream())); 
+            message = sin.readLine();
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -130,19 +117,95 @@ public class Server {
         return message;
     }
 
+    public void gracefulShutdown() {
+        running = false;
+        log.write("Server shutdown.");
+    }
+
+    // private
+
+    // this is the possible laggy part of the program so we'll do this in threads
+    private void propagateList() {
+        ArrayList<ConnectedServer> cloneList = new ArrayList<ConnectedServer>(serverList);
+
+        for (int i=0; i<cloneList.size(); i++) {
+            ConnectedServer s = cloneList.get(i);
+
+            // make sure this isn't the current server
+            if (host != s.host && port != s.port) {
+                log.write("Sending list to: <" + s.host + ":" + Integer.toString(s.port) + ">");
+                new OutgoingServerList(this, s, cloneList);
+            }
+        }
+    }
+
     // main method
 
     public static void main(String[] args) {
 
-        // set default port
-        int port = 7777;
-
         // create new server bind to port and start
-        Server server = new Server("localhost", port);
+        Server server = new Server("localhost");
 
         // start up the user interface so someone can manage the server
         // pass in the new server so we can have access to it later
         ServerInterface sinterface = new ServerInterface(server);
         sinterface.start();
+    }
+}
+
+class ConnectionBroker implements Runnable {
+
+    private Server server;
+    private ServerSocket ss;
+
+    public ConnectionBroker(Server server) {
+        this.server = server;
+    }
+
+    public void run() {
+
+        // bind server to port
+        try {
+            ss = new ServerSocket(server.port);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        // continuously check for new connections
+        while (server.running) {
+            try {
+                Socket socket = ss.accept();
+
+                String message = server.readMessage(socket);
+
+                // we're handling incoming servers and clients on the same port
+                // so we determine which is which based on the initial message sent
+                // server connects with "server", client connects with "client"
+                if (message != null && message.equals("server")) {
+                    server.log.write("Server connected.");
+                    new Thread(new IncomingServerList(server, socket)).start();
+                } else if (message != null && message.equals("client")) {
+                    server.getConnections().add(new Connection(server, socket));
+                }
+
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+}
+
+class ConnectedServer implements Serializable {
+
+    public String host;
+    public int port;
+
+    public ConnectedServer(String host, int port) {
+        this.host = host;
+        this.port = port;
+    }
+
+    public String getClientName() {
+        return "<" + host + ":" + Integer.toString(port) + ">";
     }
 }

@@ -10,7 +10,7 @@ public class Log {
     private DataOutputStream out;
 
     public Log(String fileName) {
-        createLogIfNoLog(fileName);
+        createLogIfNo(fileName);
 
         try {
             this.out = new DataOutputStream(new FileOutputStream(fileName));
@@ -20,7 +20,11 @@ public class Log {
     }
 
     public void write(String message) {
-        out.writeBytes(message + "\n");
+        try {
+            out.writeBytes(message + "\n");
+        } catch (IOException e) {
+            System.out.println("Could not write to log.");
+        }
     }
 
     // private
@@ -30,12 +34,11 @@ public class Log {
         try {
             File file = new File(fileName);
 
-            boolean success = file.createNewfile();
-
-            if (success) {
-                System.out.println(fileName + " created.");
+            if (file.exists()) {
+                System.out.println("\n" + fileName + " found.");
             } else {
-                System.out.println(fileName + " found.");
+                file.createNewFile();
+                System.out.println("\n" + fileName + " created.");
             }
         } catch (IOException e) {
             System.out.println("Error while creating/reading " + fileName);
