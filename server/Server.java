@@ -12,13 +12,17 @@ import chatosaur.server.Log;
 
 public class Server {
 
+    private String id;
+    private String name;
+    private String host;
     private int port;
     private ServerSocket server;
     private ArrayList<Connection> connections;
-    private ArrayList<Server> server;
+    private ArrayList<Server> serverList;
     private Log log;
 
-    public Server(int port) {
+    public Server(String host, int port) {
+        this.host = host;
         this.port = port;
         this.log = new Log("server.log");
     }
@@ -32,6 +36,9 @@ public class Server {
         // establish ArrayList to hold connections
         connections = new ArrayList<Connection>();
 
+        // establish ArrayList to hold servers
+        serverList = new ArrayList<Server>();
+
         // bind server to port
         try {
             server = new ServerSocket(port);
@@ -43,17 +50,20 @@ public class Server {
         while (true) {
             try {
                 Socket socket = server.accept();
-                connections.add(new Connection(this, socket, semaphore, log));
+
+                // we're handling incoming servers and clients on the same port
+                // so we determine which is which based on the initial message sent
+                // server connects with "server", client connects with "client"
+                if (readMessage(socket) == "server") {
+                    new IncomingServerList(this, socket);
+                } else {
+                    connections.add(new Connection(this, socket, semaphore, log));
+                }
+
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
-    }
-
-    public void addServer(String name, String host, Int port) {
-    }
-
-    public void removeServer() {
     }
 
     public void killSocket(Connection conn) {
@@ -78,23 +88,61 @@ public class Server {
         }
     }
 
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public void addServer(String name, String host, int port) {
+        Server newServer = new Server(host, port);
+        newServer.setName(name);
+
+        serverList.add(newServer);
+    }
+
+    // this is the possible laggy part of the program so we'll do this in threads
+    public void propagateList() {
+        for (int i=0; i<serverList.size(); i++) {
+            Server s = serverList.get(i);
+
+            // make sure this isn't the current server
+            if (server.host != s.host && server.port != s.port) {
+                Socket serverSocket = new Socket(server.host, server.port);
+                OutgoingServerList session = new OutgoingServerList(this, serverList, log);
+            }
+        }
+    }
+
+    public void setServerList(ArrayList<Server> newList) {
+        serverList = newList;
+    }
+
+    // private
+
+    private String readMessage(Socket incoming) {
+        String message = null;
+        try {
+            this.in = new BufferedReader(new InputStreamReader(incoming.getInputStream())); 
+            message = in.readLine();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return message;
+    }
+
+    // main method
+
     public static void main(String[] args) {
 
         // set default port
         int port = 7777;
 
-        // override default port if provided
-        if (args.length > 0) {
-            port = Integer.parseInt(args[0]);
-        }
-
         // create new server bind to port and start
-        Server server = new Server(port);
-        server.start();
+        Server server = new Server("localhost", port);
 
         // start up the user interface so someone can manage the server
         // pass in the new server so we can have access to it later
         ServerInterface sinterface = new ServerInterface(server);
-        interface.start();
+        sinterface.start();
     }
 }

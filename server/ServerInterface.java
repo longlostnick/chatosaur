@@ -23,23 +23,20 @@ public class ServerInterface {
             // show the user/administrator the menu
             showMenu();
 
-            System.out.print("\nChoose an option:");
+            System.out.print("\nChoose an option: ");
 
             switch(getUserInput()) {
                 case 1:
-                    promptAddServer();
+                    promptStartServer();
                     break;
                 case 2:
+                    promptAddServer();
+                    break;
+                case 3:
                     showMenu();
                     break;
                 case 0:
-
-                    // stop the server and inform other servers of termination
-                    if (server.stop()) {
-                        System.out.println("Server successfully shut down.");
-                    }
-
-                    System.exit(0);
+                    promptShutdownServer();
                     break;
                 default:
                     System.out.println("command not recognized.");
@@ -49,9 +46,18 @@ public class ServerInterface {
 
     // show user the options
     private void showMenu() {
-        System.out.println("\n1. add new server to system\n" +
-                           "2. show this menu\n" +
-                           "0. Exit");
+        System.out.println("\n1. start server\n" +
+                           "2. add new server to system\n" +
+                           "3. show this menu\n" +
+                           "0. Exit/Shutdown");
+    }
+
+    // let's the user name the server and starts it
+    private void promptStartServer() {
+        System.out.print("\nGive the server a name: ");
+
+        server.setName(getUserInput());
+        server.start();
     }
 
     // prompt the user for a server and port to add to list
@@ -64,27 +70,35 @@ public class ServerInterface {
         String host = getUserInput();
 
         System.out.print("\nServer port: ");
-        Int port = Integer.parseInt(getUserInput());
+        int port = Integer.parseInt(getUserInput());
 
         // test the connection
         if (testConnection(host, port)) {
             if (server.addServer(name, host, port)) {
                 System.out.println("Server added to system.");
-
             }
         } else {
             System.out.println("Could not contact server.");
         }
     }
 
+    private void promptShutdownServer() {
+        System.out.print("\nAre you sure? (y/n): ");
+
+        if (getUserInput() == "y") {
+            server.gracefulShutdown();
+            System.exit(0);
+        }
+    }
+
     // test a connection. returns true if connection successful
-    private boolean testConnection(String host, Int port) {
+    private boolean testConnection(String host, int port) {
         Socket socket = null;
         boolean reachable = false;
 
         try {
             Socket = new Socket(host, port);
-            reachable true;
+            reachable = true;
         } finally {
             if (socket != null) {
                 try {
@@ -108,6 +122,5 @@ public class ServerInterface {
         }
         return input;
     }
-
 
 }

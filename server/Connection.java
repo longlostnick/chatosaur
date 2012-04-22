@@ -13,7 +13,7 @@ public class Connection implements Runnable {
     private DataOutputStream out;
     public String clientName;
     private Thread thread;
-    private log;
+    private Log log;
 
     public Connection(Server server, Socket socket, Semaphore semaphore, Log log) {
         this.server = server;
