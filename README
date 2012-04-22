@@ -1,0 +1,37 @@
+I'm creating issues on here for things that need to be done. I'll be gone until thursday, but will have the entire evening to work on things and finish the project.
+
+If you guys can work on it at some point and get one or two of the issues taken care of that would be awesome.
+
+--Getting a single server/client running
+
+1. clone the repo, duhhh
+2. navigate one directory outside the repo (so if you have your repo in ~/chatosaur, you want to be in ~/)
+3. run java chatosaur.server.Server to get the server started
+4. do option one to get the server running on a port
+
+5. navigate to that directory in another window and run java chatosaur.client.Client
+6. use host=localhost and port=[the port you specified above]
+7. you should now be chatting!
+
+8. the server creates a log file "server_[port].log" you can tail to see what's going on
+
+--Adding another server:
+
+1. open a new window and run chatosaur.server.Server like before
+2. hit option 1 and start the server on a different port
+3. once the server is running hit option 2 on the OTHER server and enter in 'localhost' and the port of the new server to add it
+4. if all goes well you should see the updated list propagate in the log to the new server.
+
+--Compiling
+
+I have just been using a text editor to work on this thing, but feel free to create a new branch and make a netbeans/eclipse project or w/e.
+
+To compile the server run:
+
+    javac chatosaur/server/*.java
+
+To compile the client run:
+
+    javac chatosaur/client/*.java
+
+(remember to be one directory up from the repo again)
