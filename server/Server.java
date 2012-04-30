@@ -7,6 +7,7 @@ import java.io.Serializable;
 
 // import my project's classes
 import chatosaur.server.ServerInterface;
+import chatosaur.server.OutgoingServerMessage;
 import chatosaur.server.OutgoingServerList;
 import chatosaur.server.IncomingServerList;
 import chatosaur.server.Connection;
@@ -65,11 +66,23 @@ public class Server {
     }
 
     public void sendToAll(Connection from, String message) {
+        // send to all connections on this server
         for (int i=0; i<connections.size(); i++) {
             Connection conn = connections.get(i);
             if (conn == from) {
                 continue;
             }
+            conn.sendMessage(message);
+        }
+
+        // now send to other servers so they can send to their clients
+        propagateMessage(from, message);
+    }
+
+    public void sendToAllFromOutside(String message) {
+        // send to all connections on this server
+        for (int i=0; i<connections.size(); i++) {
+            Connection conn = connections.get(i);
             conn.sendMessage(message);
         }
     }
@@ -124,7 +137,20 @@ public class Server {
 
     // private
 
-    // this is the possible laggy part of the program so we'll do this in threads
+    private void propagateMessage(Connection from, String message) {
+        ArrayList<ConnectedServer> cloneList = new ArrayList<ConnectedServer>(serverList);
+
+        for (int i=0; i<cloneList.size(); i++) {
+            ConnectedServer s = cloneList.get(i);
+
+            // make sure this isn't the current server
+            if (host != s.host && port != s.port) {
+                log.write("Sending message to: <" + s.host + ":" + Integer.toString(s.port) + ">");
+                new OutgoingServerMessage(this, s, from, message);
+            }
+        }
+    }
+
     private void propagateList() {
         ArrayList<ConnectedServer> cloneList = new ArrayList<ConnectedServer>(serverList);
 
@@ -178,14 +204,21 @@ class ConnectionBroker implements Runnable {
 
                 String message = server.readMessage(socket);
 
-                // we're handling incoming servers and clients on the same port
-                // so we determine which is which based on the initial message sent
-                // server connects with "server", client connects with "client"
-                if (message != null && message.equals("server")) {
-                    server.log.write("Server connected.");
-                    new Thread(new IncomingServerList(server, socket)).start();
-                } else if (message != null && message.equals("client")) {
-                    server.getConnections().add(new Connection(server, socket));
+                if (message != null) {
+
+                    server.log.write("Received: " + message);
+
+                    // we're handling incoming servers and clients on the same port
+                    // so we determine which is which based on the initial message sent
+                    // server connects with "server", client connects with "client"
+                    if (message.equals("server")) {
+                        server.log.write("Server connected.");
+                        new Thread(new IncomingServerList(server, socket)).start();
+                    } else if (message.matches("^servermessage:(.*)")) {
+                        server.sendToAllFromOutside(message.replaceFirst("^servermessage:", ""));
+                    } else if (message.equals("client")) {
+                        server.getConnections().add(new Connection(server, socket));
+                    }
                 }
 
             } catch (IOException e) {
