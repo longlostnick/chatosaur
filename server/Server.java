@@ -53,12 +53,18 @@ public class Server {
         return running;
     }
 
+    // this lets us kill a client object and socket when they disconnect
     public void killSocket(Connection conn) {
         for (int i=0; i<connections.size(); i++) {
+            // find the connection we want to get rid of in the list
             if (connections.get(i) == conn) {
                 String goodbye = "<" + conn.clientName + "> left the room.";
+
+                // let everyone know this user left
                 sendToAll(conn, goodbye);
                 log.write(goodbye);
+
+                // remove the connection
                 connections.remove(i);
                 break;
             }
@@ -66,7 +72,7 @@ public class Server {
     }
 
     public void sendToAll(Connection from, String message) {
-        // send to all connections on this server
+        // send to all connections on this server except for the sender
         for (int i=0; i<connections.size(); i++) {
             Connection conn = connections.get(i);
             if (conn == from) {
@@ -87,24 +93,30 @@ public class Server {
         }
     }
 
+    // just a getter to get out list of current connections on this server
     public ArrayList<Connection> getConnections() {
         return connections;
     }
 
+    // setter to set the servers port to listen on
     public void setPort(int port) {
         this.port = port;
     }
 
+    // add a server to the network
     public void addServer(String host, int port) {
         ConnectedServer newServer = new ConnectedServer(host, port);
 
+        // add an instance to our list
         serverList.add(newServer);
 
         // send out an updated list to all the servers
         propagateList();
     }
 
+    // set the server list. This happens when another server sends us a new one
     public void setServerList(ArrayList<ConnectedServer> newList) {
+        // set the new list
         serverList = newList;
 
         String list = serverList.get(0).getClientName();
@@ -114,9 +126,11 @@ public class Server {
             list = list + ", " + s.getClientName();
         }
 
+        // write the new list to the logs
         log.write("Updated List: " + list);
     }
 
+    // read in a message
     public String readMessage(Socket incoming) {
         String message = null;
 
@@ -130,6 +144,8 @@ public class Server {
         return message;
     }
 
+    // shutdown the server, the idea is for this to be a central location to perform tasks
+    // before we kill a server
     public void gracefulShutdown() {
         running = false;
         log.write("Server shutdown.");
@@ -137,6 +153,8 @@ public class Server {
 
     // private
 
+    // send a message from one of this server's connections (clients) to the other server
+    // so that they can propagate the message to all their clients
     private void propagateMessage(Connection from, String message) {
         ArrayList<ConnectedServer> cloneList = new ArrayList<ConnectedServer>(serverList);
 
@@ -151,6 +169,8 @@ public class Server {
         }
     }
 
+    // sends the current server list around to the other connected servers.
+    // hopefully this doesn't happen too often
     private void propagateList() {
         ArrayList<ConnectedServer> cloneList = new ArrayList<ConnectedServer>(serverList);
 
@@ -179,6 +199,7 @@ public class Server {
     }
 }
 
+// pulled this out of the server into it's own thread so we can keep performing tasks while this runs
 class ConnectionBroker implements Runnable {
 
     private Server server;
@@ -210,7 +231,9 @@ class ConnectionBroker implements Runnable {
 
                     // we're handling incoming servers and clients on the same port
                     // so we determine which is which based on the initial message sent
-                    // server connects with "server", client connects with "client"
+                    // "server" incoming server
+                    // "client" incoming client
+                    // "servermessage:[message]" incoming message to propagate from another server's client
                     if (message.equals("server")) {
                         server.log.write("Server connected.");
                         new Thread(new IncomingServerList(server, socket)).start();
@@ -228,6 +251,7 @@ class ConnectionBroker implements Runnable {
     }
 }
 
+// class to define a connected server
 class ConnectedServer implements Serializable {
 
     public String host;
