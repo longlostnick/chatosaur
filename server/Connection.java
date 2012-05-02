@@ -17,24 +17,31 @@ public class Connection implements Runnable {
         this.socket = socket;
         this.clientName = socket.getInetAddress().getHostName() + ":" + socket.getPort();
 
-        // first thing's first. need to sent the client the server list
-        // this is the only time we're doing it. hopefully at least one of the
-        // servers in the list is still up when a client needs to re-connect.
-        // with good server uptime. clients would have to stay connected longer than
-        // all the server's uptime in the list before we'd have problems. even then
-        // the client can just reconnect worst case.
-        sendServerList();
-
         try {
             this.in = new BufferedReader(new InputStreamReader(socket.getInputStream())); 
             this.out = new DataOutputStream(socket.getOutputStream());
+
+            String welcome = "<" + clientName + "> joined the room.";
+            server.log.write(welcome);
+
+            // let everyone know a new client has joined
+            // this will also take care of removing any disconnected servers
+            // so we'll be sending a fresh list to the client
+            server.sendToAll(this, welcome);
+
+            // need to sent the client the server list
+            // this is the only time we're doing it. hopefully at least one of the
+            // servers in the list is still up when a client needs to re-connect.
+            // with good server uptime. clients would have to stay connected longer than
+            // all the server's uptime in the list before we'd have problems. even then
+            // the client can just reconnect worst case.
+            sendServerList();
+
+            this.thread = new Thread(this);
+            thread.start();
         } catch (IOException e) {
-            e.printStackTrace();
+            server.log.write("Client <" + clientName + "> could not connect.");
         }
-
-        this.thread = new Thread(this);
-
-        thread.start();
     }
 
     public void sendServerList() {
@@ -49,11 +56,6 @@ public class Connection implements Runnable {
     }
 
     public void run() {
-        String welcome = "<" + clientName + "> joined the room.";
-        server.log.write(welcome);
-
-        // let everyone know a new client has joined
-        server.sendToAll(this, welcome);
 
         try {
             while(true) {
