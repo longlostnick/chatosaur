@@ -3,7 +3,6 @@ package chatosaur.server;
 import java.net.*;
 import java.io.*;
 import java.util.ArrayList;
-import java.io.Serializable;
 
 // import my project's classes
 import chatosaur.server.ServerInterface;
@@ -12,23 +11,8 @@ import chatosaur.server.OutgoingServerList;
 import chatosaur.server.IncomingServerList;
 import chatosaur.server.Connection;
 import chatosaur.server.ConnectionBroker;
+import chatosaur.common.ConnectedServer;
 import chatosaur.server.Log;
-
-// class to define a connected server
-class ConnectedServer implements Serializable {
-
-    public String host;
-    public int port;
-
-    public ConnectedServer(String host, int port) {
-        this.host = host;
-        this.port = port;
-    }
-
-    public String getClientName() {
-        return "<" + host + ":" + Integer.toString(port) + ">";
-    }
-}
 
 public class Server {
 
@@ -181,6 +165,8 @@ public class Server {
 
     // removes a connected server from the list
     public void removeConnectedServer(ConnectedServer toRemove) {
+        boolean removed = false;
+
         for (int i=0; i<serverList.size(); i++) {
             ConnectedServer s = serverList.get(i);
 
@@ -190,7 +176,12 @@ public class Server {
                 break;
             }
         }
-        log.write("Removed connected server: <" + toRemove.host + ":" + Integer.toString(toRemove.port) + ">");
+
+        if (removed) {
+            log.write("Removed connected server: <" + toRemove.host + ":" + Integer.toString(toRemove.port) + ">");
+        } else {
+            log.write("Could not remove connected server: <" + toRemove.host + ":" + Integer.toString(toRemove.port) + ">");
+        }
     }
 
     // private

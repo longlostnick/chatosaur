@@ -5,6 +5,8 @@ import java.io.*;
 import java.util.concurrent.Semaphore;
 import java.util.ArrayList;
 
+import chatosaur.common.ConnectedServer;
+
 public class OutgoingServerList implements Runnable {
 
     private Server server;
@@ -35,7 +37,7 @@ public class OutgoingServerList implements Runnable {
             server.removeConnectedServer(receiver);
 
             // log this incident
-            server.log.write("Could not connect to server!");
+            server.log.write("Could not connect to server for outgoing server list!");
         }
     }
 

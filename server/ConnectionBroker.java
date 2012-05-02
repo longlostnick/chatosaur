@@ -41,11 +41,14 @@ class ConnectionBroker implements Runnable {
                     // "client" incoming client
                     // "servermessage:[message]" incoming message to propagate from another server's client
                     if (message.equals("server")) {
+                        // this is a server sending an updated server list
                         server.log.write("Server connected.");
                         new Thread(new IncomingServerList(server, socket)).start();
                     } else if (message.matches("^servermessage:(.*)")) {
+                        // this is a server with a message from one of its clients
                         server.sendToAllFromOutside(message.replaceFirst("^servermessage:", ""));
                     } else if (message.equals("client")) {
+                        // this is a client trying to communicate
                         server.getConnections().add(new Connection(server, socket));
                     }
                 }

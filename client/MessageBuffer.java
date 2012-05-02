@@ -2,33 +2,53 @@ package chatosaur.client;
 
 import java.net.*;
 import java.io.*;
-import java.util.concurrent.Semaphore;
+
+import chatosaur.common.ConnectedServer;
 
 public class MessageBuffer implements Runnable {
 
-    private BufferedReader in;
+    private Client client;
     private Thread thread;
 
-    public MessageBuffer(BufferedReader in) {
+    public MessageBuffer(Client client) {
 
-        this.in = in;
+        this.client = client;
+
         this.thread = new Thread(this);
-
         thread.start();
+    }
+
+    public void reconnectNow() {
+        boolean reconnected = false;
+        for (int i=0; i<client.serverList.size(); i++) {
+            ConnectedServer shot = client.serverList.get(i);
+
+            System.out.println("attempting to reconnect to: <" + shot.host + ":" + Integer.toString(shot.port) + ">");
+
+            if (client.connectToServer(shot.host, shot.port)) {
+                System.out.println("You were reconnected to a new server.");
+                reconnected = true;
+                break;
+            }
+        }
+
+        if (!reconnected) {
+            System.out.println("You were disconnected and could not re-connect.");
+            System.exit(0);
+        }
     }
 
     public void run() {
         try {
             while (true) {
 
-                String message = in.readLine();
+                String message = client.in.readLine();
 
                 if (message == null) {
-                    System.out.println("The server disconnected.");
-                    System.exit(0);
+                    reconnectNow();
+                } else {
+                    System.out.println(message);
                 }
-
-                System.out.println(message);
 
                 thread.sleep(1000);
             }

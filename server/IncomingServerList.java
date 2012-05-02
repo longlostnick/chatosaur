@@ -2,8 +2,9 @@ package chatosaur.server;
 
 import java.net.*;
 import java.io.*;
-import java.util.concurrent.Semaphore;
 import java.util.ArrayList;
+
+import chatosaur.common.ConnectedServer;
 
 public class IncomingServerList implements Runnable {
 

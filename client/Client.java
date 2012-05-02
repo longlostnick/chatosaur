@@ -2,14 +2,20 @@ package chatosaur.client;
 
 import java.net.*;
 import java.io.*;
+import java.util.ArrayList;
+
+import chatosaur.common.ConnectedServer;
 
 public class Client {
 
-    private static Socket socket;
-    private static BufferedReader in;
-    private static DataOutputStream out;
+    private Socket socket;
+    private DataOutputStream out;
+    public BufferedReader in;
+    public ArrayList<ConnectedServer> serverList;
 
-    public static void main(String[] args) {
+    public Client() { }
+
+    public void start() {
         
         System.out.print("\nServer host: ");
         String host = getUserInput();
@@ -17,25 +23,35 @@ public class Client {
         System.out.print("Server port: ");
         int port = Integer.parseInt(getUserInput());
 
-        if (args.length > 0) {
-            host = args[0];
-            port = Integer.parseInt(args[1]);
+        if (connectToServer(host, port)) {
+            startMessageBuffer();
+        } else {
+            System.out.println("Could not connect to server.");
         }
-        try {
-            socket = new Socket(host, port);
-        } catch (IOException e) {
-            System.out.println("Could not connect to server!");
-            System.exit(0);
-        }
+    }
+
+    public boolean connectToServer(String host, int port) {
 
         try {
-            in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-            out = new DataOutputStream(socket.getOutputStream());
+            this.socket = new Socket(host, port);
+            this.in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            this.out = new DataOutputStream(socket.getOutputStream());
 
-            // let the server know we're a client
-            out.writeBytes("client\n");
+            sendHandshake();
+            receiveServerList();
 
-            MessageBuffer mbuff = new MessageBuffer(in);
+        } catch (IOException e) { 
+            return false;
+        }
+
+        return true;
+    }
+
+    private void startMessageBuffer() {
+
+        try {
+
+            new MessageBuffer(this);
 
             // just a blank line for formatting
             System.out.println("");
@@ -53,6 +69,31 @@ public class Client {
         }
     }
 
+    private void sendHandshake() {
+        try {
+            // let the server know we're a client
+            out.writeBytes("client\n");
+        } catch (IOException e) {
+            System.out.println("Could not send handshake.");
+            System.exit(0);
+        }
+    }
+
+    public void receiveServerList() {
+        try {
+            ObjectInputStream oo = new ObjectInputStream(socket.getInputStream());
+
+            // read in the new server list object
+            serverList = (ArrayList<ConnectedServer>)oo.readObject();
+
+            System.out.println("Server list received.");
+        } catch (IOException e) {
+            System.out.println("Could not receive server list.");
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+        }
+    }
+
     // nice compact method to take user input
     private static String getUserInput() {
         String input = "";
@@ -64,5 +105,10 @@ public class Client {
             e.printStackTrace();
         }
         return input;
+    }
+
+    public static void main(String[] args) {
+        Client client = new Client();
+        client.start();
     }
 }

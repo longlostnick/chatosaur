@@ -2,8 +2,9 @@ package chatosaur.server;
 
 import java.net.*;
 import java.io.*;
-import java.util.concurrent.Semaphore;
 import java.util.ArrayList;
+
+import chatosaur.common.ConnectedServer;
 
 public class OutgoingServerMessage implements Runnable {
 
@@ -27,15 +28,22 @@ public class OutgoingServerMessage implements Runnable {
             // we want to send a message to a server's clients
             out.writeBytes("servermessage:" + message + "\n");
 
-        } catch (IOException e) {
-            server.log.write("Could not connect to server!");
-            System.exit(0);
-        }
+            Thread thread = new Thread(this);
+            thread.start();
 
-        Thread thread = new Thread(this);
-        thread.start();
+        } catch (IOException e) {
+            // remove this server from the list since it isn't responding
+            // hopefully all clients have already transparently been moved to another.
+            // this honestly saves us a ton because we don't have to worry about removing servers
+            // when they disconnect, or pinging them to make sure they're still alive
+            server.removeConnectedServer(receiver);
+
+            // log this incident
+            server.log.write("Could not connect to server for outgoing servermessage!");
+        }
     }
 
+    // if this runs, that means we successfully connected to the server
     public void run() {
         try {
 
