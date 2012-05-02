@@ -94,6 +94,7 @@ public class ServerInterface {
         }
     }
 
+    // shutdown the server, but ask the user first
     private void promptShutdownServer() {
         System.out.print("\nAre you sure? (y/n): ");
 

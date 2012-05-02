@@ -88,8 +88,10 @@ public class Server {
         }
     }
 
+    // send to all connections on this server except for the sender
     public void sendToAll(Connection from, String message) {
-        // send to all connections on this server except for the sender
+        // loop through each connection on this server and send it the message
+        // skip the person who sent the message. this might be changed in the future
         for (int i=0; i<connections.size(); i++) {
             Connection conn = connections.get(i);
             if (conn == from) {
@@ -102,8 +104,9 @@ public class Server {
         propagateMessage(from, message);
     }
 
+    // send to all connections on this server
     public void sendToAllFromOutside(String message) {
-        // send to all connections on this server
+        // loop through and send an outside message to everyone on this server
         for (int i=0; i<connections.size(); i++) {
             Connection conn = connections.get(i);
             conn.sendMessage(message);
@@ -138,6 +141,7 @@ public class Server {
 
         String list = serverList.get(0).getClientName();
 
+        // build up a list of the servers so we can log this
         for (int i=1; i<serverList.size(); i++) {
             ConnectedServer s = serverList.get(i);
             list = list + ", " + s.getClientName();
@@ -170,15 +174,33 @@ public class Server {
         }
     }
 
+    // gets a fresh copy of the server list
+    public ArrayList<ConnectedServer> getServerList() {
+        return serverList;
+    }
+
+    // removes a connected server from the list
+    public void removeConnectedServer(ConnectedServer toRemove) {
+        for (int i=0; i<serverList.size(); i++) {
+            ConnectedServer s = serverList.get(i);
+
+            // check to see if this is the one we want to remove
+            if (s == toRemove) {
+                serverList.remove(i);
+                break;
+            }
+        }
+        log.write("Removed connected server: <" + toRemove.host + ":" + Integer.toString(toRemove.port) + ">");
+    }
+
     // private
 
     // send a message from one of this server's connections (clients) to the other server
     // so that they can propagate the message to all their clients
     private void propagateMessage(Connection from, String message) {
-        ArrayList<ConnectedServer> cloneList = new ArrayList<ConnectedServer>(serverList);
 
-        for (int i=0; i<cloneList.size(); i++) {
-            ConnectedServer s = cloneList.get(i);
+        for (int i=0; i<serverList.size(); i++) {
+            ConnectedServer s = serverList.get(i);
 
             // make sure this isn't the current server
             if (host != s.host && port != s.port) {
@@ -191,15 +213,14 @@ public class Server {
     // sends the current server list around to the other connected servers.
     // hopefully this doesn't happen too often
     private void propagateList() {
-        ArrayList<ConnectedServer> cloneList = new ArrayList<ConnectedServer>(serverList);
 
-        for (int i=0; i<cloneList.size(); i++) {
-            ConnectedServer s = cloneList.get(i);
+        for (int i=0; i<serverList.size(); i++) {
+            ConnectedServer s = serverList.get(i);
 
-            // make sure this isn't the current server
+            // make sure we don't send to ourselves
             if (host != s.host && port != s.port) {
                 log.write("Sending list to: <" + s.host + ":" + Integer.toString(s.port) + ">");
-                new OutgoingServerList(this, s, cloneList);
+                new OutgoingServerList(this, s);
             }
         }
     }
