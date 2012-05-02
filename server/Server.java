@@ -11,7 +11,24 @@ import chatosaur.server.OutgoingServerMessage;
 import chatosaur.server.OutgoingServerList;
 import chatosaur.server.IncomingServerList;
 import chatosaur.server.Connection;
+import chatosaur.server.ConnectionBroker;
 import chatosaur.server.Log;
+
+// class to define a connected server
+class ConnectedServer implements Serializable {
+
+    public String host;
+    public int port;
+
+    public ConnectedServer(String host, int port) {
+        this.host = host;
+        this.port = port;
+    }
+
+    public String getClientName() {
+        return "<" + host + ":" + Integer.toString(port) + ">";
+    }
+}
 
 public class Server {
 
@@ -198,73 +215,5 @@ public class Server {
         // pass in the new server so we can have access to it later
         ServerInterface sinterface = new ServerInterface(server);
         sinterface.start();
-    }
-}
-
-// pulled this out of the server into it's own thread so we can keep performing tasks while this runs
-class ConnectionBroker implements Runnable {
-
-    private Server server;
-    private ServerSocket ss;
-
-    public ConnectionBroker(Server server) {
-        this.server = server;
-    }
-
-    public void run() {
-
-        // bind server to port
-        try {
-            ss = new ServerSocket(server.port);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        // continuously check for new connections
-        while (server.running) {
-            try {
-                Socket socket = ss.accept();
-
-                String message = server.readMessage(socket);
-
-                if (message != null) {
-
-                    server.log.write("Received: " + message);
-
-                    // we're handling incoming servers and clients on the same port
-                    // so we determine which is which based on the initial message sent
-                    // "server" incoming server
-                    // "client" incoming client
-                    // "servermessage:[message]" incoming message to propagate from another server's client
-                    if (message.equals("server")) {
-                        server.log.write("Server connected.");
-                        new Thread(new IncomingServerList(server, socket)).start();
-                    } else if (message.matches("^servermessage:(.*)")) {
-                        server.sendToAllFromOutside(message.replaceFirst("^servermessage:", ""));
-                    } else if (message.equals("client")) {
-                        server.getConnections().add(new Connection(server, socket));
-                    }
-                }
-
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-    }
-}
-
-// class to define a connected server
-class ConnectedServer implements Serializable {
-
-    public String host;
-    public int port;
-
-    public ConnectedServer(String host, int port) {
-        this.host = host;
-        this.port = port;
-    }
-
-    public String getClientName() {
-        return "<" + host + ":" + Integer.toString(port) + ">";
     }
 }
