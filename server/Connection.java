@@ -63,7 +63,7 @@ public class Connection implements Runnable {
                 // receive message from client
                 String message = (String) in.readLine();
 
-                if (message == null) {
+                if (message == null || message.equals("null")) {
                     // client disconnected
                     break;
                 }
@@ -96,7 +96,8 @@ public class Connection implements Runnable {
         try {
             out.writeBytes(message + '\n');
         } catch(IOException e) {
-            e.printStackTrace();
+            // client is no longer connected, let's kill this sucker
+            server.killSocket(this);
         }
     }
 }
