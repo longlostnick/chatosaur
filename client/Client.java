@@ -86,7 +86,15 @@ public class Client {
             // read in the new server list object
             serverList = (ArrayList<ConnectedServer>)oo.readObject();
 
-            System.out.println("Server list received.");
+            String list = serverList.get(0).getClientName();
+
+            // build up a list of the servers so we can log this
+            for (int i=1; i<serverList.size(); i++) {
+                ConnectedServer s = serverList.get(i);
+                list = list + ", " + s.getClientName();
+            }
+
+            System.out.println("Server list received: " + list);
         } catch (IOException e) {
             System.out.println("Could not receive server list.");
         } catch (ClassNotFoundException e) {

@@ -23,17 +23,15 @@ public class MessageBuffer implements Runnable {
         for (int i=0; i<client.serverList.size(); i++) {
             ConnectedServer shot = client.serverList.get(i);
 
-            System.out.println("attempting to reconnect to: <" + shot.host + ":" + Integer.toString(shot.port) + ">");
-
             if (client.connectToServer(shot.host, shot.port)) {
-                System.out.println("You were reconnected to a new server.");
+                System.out.println("You were reconnected to a new server.\n");
                 reconnected = true;
                 break;
             }
         }
 
         if (!reconnected) {
-            System.out.println("You were disconnected and could not re-connect.");
+            System.out.println("You were disconnected and could not re-connect.\n");
             System.exit(0);
         }
     }
@@ -45,6 +43,7 @@ public class MessageBuffer implements Runnable {
                 String message = client.in.readLine();
 
                 if (message == null) {
+                    thread.sleep(1000);
                     reconnectNow();
                 } else {
                     System.out.println(message);

@@ -173,6 +173,7 @@ public class Server {
             // check to see if this is the one we want to remove
             if (s == toRemove) {
                 serverList.remove(i);
+                removed = true;
                 break;
             }
         }
