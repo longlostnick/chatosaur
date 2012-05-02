@@ -94,9 +94,9 @@ public class Client {
                 list = list + ", " + s.getClientName();
             }
 
-            System.out.println("Server list received: " + list);
+            System.out.println("\nServer list received: " + list);
         } catch (IOException e) {
-            System.out.println("Could not receive server list.");
+            System.out.println("\nCould not receive server list, but will remain connected.");
         } catch (ClassNotFoundException e) {
             e.printStackTrace();
         }

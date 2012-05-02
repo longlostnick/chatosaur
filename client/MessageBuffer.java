@@ -24,7 +24,7 @@ public class MessageBuffer implements Runnable {
             ConnectedServer shot = client.serverList.get(i);
 
             if (client.connectToServer(shot.host, shot.port)) {
-                System.out.println("You were reconnected to a new server.\n");
+                System.out.println("You were reconnected to " + shot.getClientName() + "\n");
                 reconnected = true;
                 break;
             }
@@ -43,7 +43,6 @@ public class MessageBuffer implements Runnable {
                 String message = client.in.readLine();
 
                 if (message == null) {
-                    thread.sleep(1000);
                     reconnectNow();
                 } else {
                     System.out.println(message);
