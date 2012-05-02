@@ -147,8 +147,10 @@ public class Server {
     // shutdown the server, the idea is for this to be a central location to perform tasks
     // before we kill a server
     public void gracefulShutdown() {
-        running = false;
-        log.write("Server shutdown.");
+        if (running == true) {
+            running = false;
+            log.write("Server shutdown.");
+        }
     }
 
     // private
